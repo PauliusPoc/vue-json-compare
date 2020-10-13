@@ -120,7 +120,6 @@ const mergeData = (_old, _new) => {
       key = key +1;
     })
     sameValues.forEach((sameValue, index) => {
-      console.log(sameValue);
       const needComma = (index === sameValues.length -1) ? false : true;
       target.push(
         parseValue(key, sameValue, showIndex, needComma, 'none')
