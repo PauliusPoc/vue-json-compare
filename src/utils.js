@@ -31,9 +31,9 @@ const isComplexType = (param) => {
   return isObject(param) || isArray(param);
 };
 
-const isTheSametype = (a, b) => {
+const isTheSametype = (oldState, newState) => {
   return (
-    Object.prototype.toString.call(a) === Object.prototype.toString.call(b)
+    Object.prototype.toString.call(oldState) === Object.prototype.toString.call(newState)
   );
 };
 
@@ -41,7 +41,7 @@ const mergeData = (_old, _new) => {
   // finally result
   let result = [];
   // each line No.
-  let start = 1;
+  let start = 1
 
   // convert array or object to Array<object> [{}]
   const convertObject = (param, lineType) => {
@@ -63,6 +63,7 @@ const mergeData = (_old, _new) => {
           lastLineType: lineType,
           lastLine: isComplexType(param[key]) ? start++ : null,
         });
+        _.orderBy(list, ['name'], ['desc']);
       });
       return list;
     } else {
@@ -98,64 +99,100 @@ const mergeData = (_old, _new) => {
     };
   };
 
-  // merge two vars to target,target type Array<object>[{}]
-  const parseData = (a, b, target) => {
-    let _ar = Object.keys(a);
-    let _br = Object.keys(b);
-    let showIndex = isObject(b);
-    // deleted keys
-    let _del = _ar.filter((ak) => !_br.some((bk) => bk === ak));
-    // not removed keys
-    let _stl = _ar.filter((ak) => _br.some((bk) => bk === ak));
-    // new added keys
-    let _add = _br.filter((bk) => !_ar.some((ak) => ak === bk));
-    // push deleted keys
-    _del.forEach((key, index) => {
-      let needComma = true;
-      if (_stl.length === 0 && _add.length === 0 && index === _del.length - 1) {
-        needComma = false;
-      }
-      target.push(parseValue(key, a[key], showIndex, needComma, 'del'));
-    });
-    // The core function: compare
-    _stl.forEach((key, index) => {
-      let needComma = true;
-      if (_add.length === 0 && index === _stl.length - 1) {
-        needComma = false;
-      }
-      if (a[key] === b[key]) {
-        target.push(parseValue(key, b[key], showIndex, needComma, 'none'));
-      } else if (isTheSametype(a[key], b[key])) {
-        if (isComplexType(b[key])) {
-          let _target = parseValue(
-            key,
-            isArray(a[key]) ? [] : {},
-            showIndex,
-            needComma,
-            'none'
-          );
-          target.push(_target);
-          // back one step
-          start -= 1;
-          // go inside
-          parseData(a[key], b[key], _target.value);
-          // rewrite lastline
-          _target.lastLine = start++;
-        } else {
-          target.push(parseValue(key, a[key], showIndex, true, 'del'));
-          target.push(parseValue(key, b[key], showIndex, needComma, 'add'));
-        }
-      } else {
-        target.push(parseValue(key, a[key], showIndex, true, 'del'));
-        target.push(parseValue(key, b[key], showIndex, needComma, 'add'));
-      }
-    });
-    // push new keys
-    _add.forEach((key, index) => {
+  const arrayDiffs = (oldState, newState, target) => {
+    const addedValues = newState.filter((value) => oldState.indexOf(value) === -1);
+    const removedValues = oldState.filter((value) => newState.indexOf(value) === -1);
+    const sameValues = oldState.filter((value) => newState.indexOf(value) !== -1);
+
+    let key = 0;
+    const showIndex = false;
+
+    addedValues.forEach(addedValue => {
       target.push(
-        parseValue(key, b[key], showIndex, _add.length !== index + 1, 'add')
+        parseValue(key, addedValue, showIndex, true, 'add')
       );
-    });
+      key = key +1;
+    })
+    removedValues.forEach(removedValue => {
+      target.push(
+        parseValue(key, removedValue, showIndex, true, 'del')
+      );
+      key = key +1;
+    })
+    sameValues.forEach((sameValue, index) => {
+      console.log(sameValue);
+      const needComma = (index === sameValues.length -1) ? false : true;
+      target.push(
+        parseValue(key, sameValue, showIndex, needComma, 'none')
+      );
+      key = key +1;
+    })
+
+  }
+
+  // merge two vars to target,target type Array<object>[{}]
+  const parseData = (oldState, newState, target) => {
+    if (_.isArray(oldState)) {
+      arrayDiffs(oldState, newState, target);
+    } else {
+      let _oldKeys = Object.keys(oldState);
+      let _newKeys = Object.keys(newState);
+      let showIndex = isObject(newState);
+      // deleted keys
+      let _deletedKeys = _oldKeys.filter((oldKey) => !_newKeys.some((newKey) => newKey === oldKey));
+      // not removed keys
+      let _sameKeys = _oldKeys.filter((oldKey) => _newKeys.some((newKey) => newKey === oldKey));
+      // new added keys
+      let _addedKeys = _newKeys.filter((newKey) => !_oldKeys.some((oldKey) => oldKey === newKey));
+      // push deleted keys
+      _deletedKeys.forEach((key, index) => {
+        let needComma = true;
+        if (_sameKeys.length === 0 && _addedKeys.length === 0 && index === _deletedKeys.length - 1) {
+          needComma = false;
+        }
+        target.push(parseValue(key, oldState[key], showIndex, needComma, 'del'));
+      });
+
+      // push new keys
+      _addedKeys.forEach((key, index) => {
+        target.push(
+          parseValue(key, newState[key], showIndex, _addedKeys.length !== index + 1, 'add')
+        );
+      });
+      // The core function: compare
+      _sameKeys.forEach((key, index) => {
+        let needComma = true;
+        if (_addedKeys.length === 0 && index === _sameKeys.length - 1) {
+          needComma = false;
+        }
+        if (oldState[key] === newState[key]) {
+          target.push(parseValue(key, newState[key], showIndex, needComma, 'none'));
+        } else if (isTheSametype(oldState[key], newState[key])) {
+          if (isComplexType(newState[key])) { // && isArray
+            let _target = parseValue(
+              key,
+              isArray(oldState[key]) ? [] : {},
+              showIndex,
+              needComma,
+              'none'
+            );
+            target.push(_target);
+            // back one step
+            start -= 1;
+            // go inside
+            parseData(oldState[key], newState[key], _target.value);
+            // rewrite lastline
+            _target.lastLine = start++;
+          } else {
+            target.push(parseValue(key, oldState[key], showIndex, true, 'del'));
+            target.push(parseValue(key, newState[key], showIndex, needComma, 'add'));
+          }
+        } else {
+          target.push(parseValue(key, oldState[key], showIndex, true, 'del'));
+          target.push(parseValue(key, newState[key], showIndex, needComma, 'add'));
+        }
+      });
+    }
   };
 
   if (isTheSametype(_old, _new) && isComplexType(_new)) {

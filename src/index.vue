@@ -1,6 +1,5 @@
 <template>
   <pre class="c-json-view">
-    <p class="c-json-outter">{{isArray(newData) ? '[' : '{'}}</p>
       <Tree 
         v-for="(item, index) in mergeView" 
         :key="index" 
@@ -13,7 +12,6 @@
         :lineType="item.lineType"
         :lastLineType="item.lastLineType"
         :lastLine="item.lastLine" />
-    <p class="c-json-outter">{{isArray(newData) ? ']' : '}'}}</p>
   </pre>
 </template>
 
@@ -51,6 +49,10 @@ export default {
 </script>
 
 <style>
+.v-application p {
+  margin-bottom: 0;
+}
+
 .c-json-view {
   display: block;
   width: 100%;
@@ -69,7 +71,7 @@ export default {
   text-align: left;
   padding: 0;
   margin: 0;
-  padding: 2px 0;
+  padding: 0;
 }
 
 .c-json-line {
@@ -88,7 +90,7 @@ export default {
   content: '-';
   position: absolute;
   left: 5px;
-  top: 3px;
+  top: 0;
   width: 10px;
   height: 15px;
   z-index: 5;
@@ -100,7 +102,7 @@ export default {
   content: '+';
   position: absolute;
   left: 5px;
-  top: 3px;
+  top: 0;
   width: 10px;
   height: 15px;
   z-index: 5;
@@ -122,7 +124,7 @@ export default {
 .c-json-mark {
   position: absolute;
   left: -30px;
-  top: 2px;
+  top: 0;
   text-indent: 0;
   font-size: 12px;
   color: #545454;
